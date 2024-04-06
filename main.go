@@ -3,19 +3,25 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"golang.org/x/net/html"
 	"net/url"
+	"time"
+
+	"github.com/Mario-Juu/crawler/db"
+	"golang.org/x/net/html"
 )
 
-var (links []string
+var (
 	visited map[string]bool = map[string]bool{}
 )
 
+type VisitedLink struct{
+	Link string`bson: "link"`
+	Website string`bson:"website"`
+	VisitedDate time.Time`bson:"visitedDate"`
+}
 func main() {
 	visitLink("https://aprendagolang.com.br")
 	
-
-	fmt.Println(len(links))
 }
 
 func extractLinks(node *html.Node){
@@ -28,7 +34,15 @@ func extractLinks(node *html.Node){
 			if err != nil || link.Scheme == ""{
 				continue
 			}
-			links = append(links, attr.Val)
+
+			visitedLink := VisitedLink{
+				Website: link.Host,
+				Link: link.String(),
+				VisitedDate: time.Now(),
+			}
+			db.InsertLink("visited_links", visitedLink)
+
+
 			fmt.Println(link.String())
 			visitLink(link.String())
 		}
