@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,6 +11,11 @@ import (
 	"golang.org/x/net/html"
 )
 
+var link string
+
+func init(){
+	flag.StringVar(&link, "link", "https://aprendagolang.com.br", "Link para iniciar o crawler")
+}
 
 type VisitedLink struct{
 	Link string`bson:"link"`
@@ -17,8 +23,11 @@ type VisitedLink struct{
 	VisitedDate time.Time`bson:"visitedDate"`
 }
 func main() {
-	visitLink("https://aprendagolang.com.br")
+	flag.Parse()
+	done := make(chan bool)
+	go visitLink(link)
 	
+	<-done
 }
 
 func extractLinks(node *html.Node){
@@ -28,7 +37,7 @@ func extractLinks(node *html.Node){
 				continue
 			}
 			link, err := url.Parse(attr.Val)
-			if err != nil || link.Scheme == ""{
+			if err != nil || link.Scheme == "" || link.Scheme == "mailto" || link.Scheme == "tel" || link.Scheme == "javascript"{
 				continue
 			}
 			if db.VisitedLink(link.String()){
@@ -44,7 +53,7 @@ func extractLinks(node *html.Node){
 
 
 			fmt.Println(link.String())
-			visitLink(link.String())
+			go visitLink(link.String())
 		}
 	}
 
@@ -62,7 +71,7 @@ func visitLink(link string){
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK{
-		panic(fmt.Sprintf("Erro ao acessar o site, status: %d", resp.StatusCode))
+		fmt.Printf("Erro ao acessar o site, status: %d", resp.StatusCode)
 	}
 
 	doc, err := html.Parse(resp.Body)
